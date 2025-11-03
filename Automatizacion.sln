@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36511.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestIngreso", "TestIngreso\TestIngreso.csproj", "{46A53010-1D64-4E3D-B71D-8074FE32FF4E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Automation", "Automation\Automation.csproj", "{77783314-A493-4875-A6BC-3BEF353BBDDC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Elementos de la solución", "Elementos de la solución", "{D107F4C8-89CC-BEA8-D3D7-CA6B7733353D}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{46A53010-1D64-4E3D-B71D-8074FE32FF4E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{46A53010-1D64-4E3D-B71D-8074FE32FF4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{46A53010-1D64-4E3D-B71D-8074FE32FF4E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{46A53010-1D64-4E3D-B71D-8074FE32FF4E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77783314-A493-4875-A6BC-3BEF353BBDDC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77783314-A493-4875-A6BC-3BEF353BBDDC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77783314-A493-4875-A6BC-3BEF353BBDDC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77783314-A493-4875-A6BC-3BEF353BBDDC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E9F7EB29-A428-426D-B823-CA532B0FAC77}
+	EndGlobalSection
+EndGlobal

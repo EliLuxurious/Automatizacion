@@ -1,0 +1,19 @@
+# Visual Studio / .NET
+.vs/
+[Bb]in/
+[Oo]bj/
+TestResults/
+*.trx
+*.coverage*
+*.coverage
+*.VisualState.xml
+*.user
+*.suo
+
+# Paquetes (si usas packages.config)
+packages/
+
+# Publicaciones y otros
+*.publish.xml
+_ReSharper*/
+*.ncrunch*
