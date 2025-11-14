@@ -1,204 +1,177 @@
-using System;
-using System.Linq;
+using Automation.Pages;                 // LoginPage, MenuPage (si están allí)
 using NUnit.Framework;
 using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Support.UI;          // <- SelectElement
+using OpenQA.Selenium.Support.UI;
+using RegistroIngreso.Pages;            // IngresoPage
 using Reqnroll;
-using SeleniumExtras.WaitHelpers;
 
 namespace Automation.StepDefinitions
 {
     [Binding]
     public class NuevoIngresoStepDefinitions
     {
-        private IWebDriver _driver;
-        private WebDriverWait _wait;
+        private readonly IWebDriver _driver;
+        private readonly WebDriverWait _wait;
+        private readonly LoginPage _login;
+        private readonly MenuPage _menu;
+        private readonly IngresoPage _ingresos;
 
-        // ===== Hooks =====
-        [BeforeScenario]
-        public void BeforeScenario()
+        // El driver y el wait vienen de Hooks (BoDi)
+        public NuevoIngresoStepDefinitions(IWebDriver driver, WebDriverWait wait)
         {
-            _driver = new ChromeDriver();
-            _wait = new WebDriverWait(_driver, TimeSpan.FromSeconds(30));
+            _driver = driver;
+            _wait = wait;
+            _login = new LoginPage(_driver, _wait);
+            _menu = new MenuPage(_driver, _wait);
+            _ingresos = new IngresoPage(_driver, _wait);
         }
 
-        [AfterScenario]
-        public void AfterScenario()
-        {
-            _driver.Quit();
-            _driver.Dispose();
-        }
-
-        // ===== Steps =====
+        // No crees ni cierres driver aquí: Hooks lo hace.
+        // [BeforeScenario] y [AfterScenario] ya no son necesarios.
 
         [Given("el usuario ingresa al ambiente {string}")]
-        public void GivenElUsuarioIngresaAlAmbiente(string url)
-        {
-            _driver.Navigate().GoToUrl(url);
-            _driver.Manage().Window.Maximize();
-        }
+        public void GivenAmbiente(string url) => _login.GoTo(url);
 
         [When("el usuario ingresa sesion con usuario {string} y contraseña {string}")]
-        public void WhenElUsuarioIngresaSesionConUsuarioYContrasena(string usuario, string clave)
-        {
-            _wait.Until(ExpectedConditions.ElementIsVisible(By.Id("Email"))).SendKeys(usuario);
-            _driver.FindElement(By.Id("Password")).SendKeys(clave);
-            _driver.FindElement(By.XPath("//button[normalize-space()='Iniciar']")).Click();
-
-            // Aceptar diálogo y validar login
-            _wait.Until(ExpectedConditions.ElementToBeClickable(By.XPath("//button[normalize-space()='Aceptar']"))).Click();
-            Assert.IsTrue(_wait.Until(ExpectedConditions.ElementIsVisible(By.Id("ImagenLogo"))).Displayed);
-        }
+        public void WhenLogin(string u, string p) => _login.SignIn(u, p);
 
         [When("acceder al modulo {string}")]
-        public void WhenAccederAlModulo(string modulo)
-        {
-            _wait.Until(ExpectedConditions.ElementToBeClickable(
-                By.XPath($"//span[normalize-space()='{modulo}']"))).Click();
-        }
+        public void WhenModulo(string m) => _menu.OpenModule(m);
 
         [When("acceder al submodulo {string}")]
-        public void WhenAccederAlSubmodulo(string submodulo)
-        {
-            _wait.Until(ExpectedConditions.ElementToBeClickable(
-                By.XPath($"//a[normalize-space()='{submodulo}']"))).Click();
-        }
+        public void WhenSubmodulo(string s) => _menu.OpenSubmodule(s);
 
         [When("el usuario hace clic en el botón {string}")]
-        public void WhenElUsuarioHaceClicEnElBoton(string textoBoton)
+        public void WhenClickIngreso(string btn)
         {
-            _wait.Until(ExpectedConditions.ElementToBeClickable(
-                By.XPath($"//button[contains(normalize-space(.), '{textoBoton}')]"))).Click();
+            if (btn.Trim().ToUpper() == "INGRESO")
+                _ingresos.AbrirFormularioIngreso();
         }
 
-        // ÚNICO step genérico para completar campos
         [When("completa el campo {string} con {string}")]
-        public void WhenCompletaElCampoCon(string campo, string valor)
+        public void WhenCompletaCampo(string campo, string valor)
         {
-            By locator;
+            // si el ejemplo manda vacío, no escribir nada (deja el campo faltante)
+            if (string.IsNullOrWhiteSpace(valor))
+                return;
 
             switch (campo.Trim().ToUpperInvariant())
             {
-                case "AUTORIZADO POR":
-                    locator = By.XPath("//*[@id='modal-registro-ingreso-egreso-varios']//label[normalize-space()='AUTORIZADO POR']/following::input[1]");
-                    break;
-
-                case "PAGADOR":
-                    locator = By.XPath("//*[@id='modal-registro-ingreso-egreso-varios']//label[normalize-space()='PAGADOR']/following::input[1]");
-                    break;
-
-                case "IMPORTE":
-                    locator = By.Id("importe");
-                    break;
-
+                case "AUTORIZADO POR": _ingresos.SetAutorizado(valor); break;
+                case "PAGADOR": _ingresos.SetPagador(valor); break;
+                case "DOCUMENTO":
+                case "TIPO DE DOCUMENTO":
+                case "DOC":
+                    _ingresos.SeleccionarDocumento(valor); break;
+                case "IMPORTE": _ingresos.SetImporte(valor); break;
                 case "OBSERVACIÓN":
-                case "OBSERVACION":
-                    locator = By.Id("observacion");
-                    break;
+                case "OBSERVACION": _ingresos.SetObservacion(valor); break;
+                //case "SERIE": _ingresos.SetSerie(valor); break;
+                //case "CORRELATIVO": _ingresos.SetCorrelativo(valor); break;
+                default: Assert.Fail($"Campo no soportado: {campo}"); break;
 
-                default:
-                    throw new ArgumentException($"Campo no soportado: {campo}");
             }
-
-            var el = _wait.Until(ExpectedConditions.ElementIsVisible(locator));
-            el.Clear();
-            el.SendKeys(valor);
         }
+
 
         [When("selecciona {string} como tipo de persona")]
-        public void WhenSeleccionaComoTipoDePersona(string tipo)
-        {
-            // Click al label (Empleado/Cliente/Proveedor) dentro del modal
-            var label = _wait.Until(ExpectedConditions.ElementToBeClickable(
-                By.XPath($"//*[@id='modal-registro-ingreso-egreso-varios']//label[normalize-space()='{tipo}']")));
-            ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].scrollIntoView({block:'center'})", label);
-            label.Click();
-
-            // Si el label no marca, clic al input hermano
-            var radio = _driver.FindElements(By.XPath(
-                $"//*[@id='modal-registro-ingreso-egreso-varios']//label[normalize-space()='{tipo}']/preceding-sibling::input[@type='radio'] | " +
-                $"//*[@id='modal-registro-ingreso-egreso-varios']//label[normalize-space()='{tipo}']/following-sibling::input[@type='radio']"))
-                .FirstOrDefault();
-
-            if (radio != null && !radio.Selected)
-            {
-                ((IJavaScriptExecutor)_driver).ExecuteScript("arguments[0].click();", radio);
-                if (!radio.Selected)
-                    throw new WebDriverException($"No se pudo seleccionar el tipo '{tipo}'.");
-            }
-        }
+        public void WhenTipoPersona(string t) => _ingresos.SeleccionarTipoPersona(t);
 
         [When("selecciona el tipo de documento {string}")]
-        public void WhenSeleccionaElTipoDeDocumento(string documentoVisibleText)
-        {
-            // Espera modal para acotar
-            _wait.Until(ExpectedConditions.ElementIsVisible(By.XPath("//*[@id='modal-registro-ingreso-egreso-varios']")));
-
-            var ddl = new SelectElement(_wait.Until(ExpectedConditions.ElementExists(
-                By.XPath("//*[@id='modal-registro-ingreso-egreso-varios']//label[normalize-space()='DOCUMENTO']/following::select[1]"))));
-            ddl.SelectByText(documentoVisibleText);
-        }
+        public void WhenDoc(string d) => _ingresos.SeleccionarDocumento(d);
 
         [When("completa el importe con {string}")]
-        public void WhenCompletaElImporteCon(string monto)
-        {
-            var importe = _wait.Until(ExpectedConditions.ElementIsVisible(By.Id("importe")));
-            importe.Clear();
-            importe.SendKeys(monto);
-        }
+        public void WhenCompletaElImporteCon(string monto) => _ingresos.SetImporte(monto);
 
         [When("escribe la observación {string}")]
-        public void WhenEscribeLaObservacion(string obs)
-        {
-            var observacion = _wait.Until(ExpectedConditions.ElementIsVisible(By.Id("observacion")));
-            observacion.Clear();
-            observacion.SendKeys(obs);
-        }
+        public void WhenEscribeLaObservacion(string obs) => _ingresos.SetObservacion(obs);
+
 
         [When("presiona el botón {string}")]
-        public void WhenPresionaElBoton(string textoBoton)
+        public void WhenGuardar(string b)
         {
-            // Si es GUARDAR, esperar que esté habilitado
-            if (textoBoton.Trim().Equals("GUARDAR", StringComparison.OrdinalIgnoreCase))
-            {
-                var btn = EsperarBotonGuardarHabilitado();
-                btn.Click();
-            }
-            else
-            {
-                _wait.Until(ExpectedConditions.ElementToBeClickable(
-                    By.XPath($"//button[normalize-space()='{textoBoton}']"))).Click();
-            }
+            if (b.Trim().ToUpper() == "GUARDAR") _ingresos.Guardar();
         }
+
+        [When("intenta guardar el ingreso")]
+        public void WhenIntentaGuardarElIngreso()
+        {
+            _ingresos.GuardarEsperandoErrores(); // método negativo en tu POM
+        }
+
+        // 1) Generar observación larga sin pegarla en el .feature
+        [When(@"escribe una observación de '(\d+)' caracteres")]
+        public void WhenEscribeUnaObservacionDeNCaracteres(int n)
+        {
+            if (n < 1) n = 1;
+            var obs = new string('X', n);
+            _ingresos.SetObservacion(obs);
+        }
+
+        // 2) Verificar que un campo (por etiqueta) quedó vacío
+        [Then(@"el campo '(.*)' queda vacío")]
+        public void ThenElCampoQuedaVacio(string label)
+        {
+            var val = _ingresos.ObtenerValorPorLabel(label);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(val), $"Se esperaba '{label}' vacío, pero tiene: '{val}'.");
+        }
+
+        // 3) Verificar normalización/formato del importe
+        [Then(@"el importe formateado es '(.*)'")]
+        public void ThenElImporteFormateadoEs(string esperado)
+        {
+            var val = _ingresos.ObtenerImporteActual();
+            Assert.AreEqual(esperado, val, $"Importe formateado esperado '{esperado}', actual '{val}'.");
+        }
+
+
+        [Then("se muestran las inconsistencias requeridas")]
+        public void ThenSeMuestranLasInconsistenciasReq(Reqnroll.Table table)
+        {
+            _ingresos.DebeVerBloqueInconsistencias();
+            foreach (var row in table.Rows)
+            {
+                _ingresos.DebeContenerInconsistencia(row["mensaje"]);
+            }
+            _ingresos.NoDebeMostrarseToastExito();
+        }
+
 
         [Then("el ingreso se registra correctamente")]
-        public void ThenElIngresoSeRegistraCorrectamente()
-        {
-            var mensajeOk = _wait.Until(ExpectedConditions.ElementIsVisible(
-                By.XPath("//*[contains(.,'Ingreso registrado correctamente') or contains(.,'guardado')]")));
-            Assert.IsTrue(mensajeOk.Displayed, "No se mostró mensaje de confirmación de guardado.");
-        }
+        public void ThenOk() => _ingresos.DebeVerConfirmacion();
 
         [Then("se muestra el mensaje de error '(.*)'")]
-        public void ThenSeMuestraElMensajeDeError(string mensaje)
+        public void ThenErr(string msg) => _ingresos.DebeVerError(msg);
+
+        [Then(@"el campo '(.*)' queda inválido")]
+        public void ThenCampoQuedaInvalido(string label)
         {
-            var errorMsg = _wait.Until(ExpectedConditions.ElementIsVisible(
-                By.XPath($"//*[contains(text(),'{mensaje}')]")));
-            Assert.IsTrue(errorMsg.Displayed, $"No se encontró el mensaje: {mensaje}");
+            Assert.IsTrue(_ingresos.CampoInvalido(label),
+                $"Se esperaba el campo '{label}' inválido y no lo está.");
+        }
+
+        [Then(@"no debe permitir registrar el ingreso")]
+        public void ThenNoDebePermitirRegistrarElIngreso()
+        {
+            // Ya hiciste: _ingresoPage.GuardarEsperandoErrores();
+            _ingresos.DebeBloquearElRegistroPorValidacion();
         }
 
 
-        // ===== Helpers privados =====
-        private IWebElement EsperarBotonGuardarHabilitado()
+        [Then(@"el bloque de inconsistencias contiene")]
+        public void ThenBloqueDeInconsistenciasContiene(Reqnroll.Table table)
         {
-            return _wait.Until(driver =>
+            _ingresos.DebeVerBloqueInconsistencias();
+            foreach (var row in table.Rows)
             {
-                var btn = driver.FindElement(By.XPath(
-                    "//*[@id='modal-registro-ingreso-egreso-varios']//button[@title='GUARDAR' or normalize-space()='GUARDAR' or @ng-click='registrarIngresoEgresoVarios()']"));
-                var disabledAttr = btn.GetAttribute("disabled");
-                return (btn.Enabled && string.IsNullOrEmpty(disabledAttr)) ? btn : null;
-            });
+                var texto = row["texto"];            // columna de tu tabla en el .feature
+                _ingresos.DebeContenerInconsistencia(texto);
+            }
+            _ingresos.NoDebeMostrarseToastExito();
         }
+
+
+
+
     }
 }
